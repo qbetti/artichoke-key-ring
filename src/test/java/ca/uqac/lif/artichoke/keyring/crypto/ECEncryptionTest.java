@@ -1,0 +1,82 @@
+package ca.uqac.lif.artichoke.keyring.crypto;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import javax.crypto.SecretKey;
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.Security;
+import java.util.Arrays;
+
+import static org.junit.Assert.*;
+
+public class ECEncryptionTest {
+
+    @BeforeClass
+    public static void init() {
+        Security.addProvider(new BouncyCastleProvider());
+    }
+
+    @Test
+    public void testGenerateKeys() {
+        KeyPair keyPair0 = ECEncryption.generateNewKeys();
+        assertNotNull(keyPair0);
+
+        KeyPair keyPair1 = ECEncryption.generateNewKeys();
+        assertNotNull(keyPair1);
+
+        assertFalse(Arrays.equals(keyPair0.getPrivate().getEncoded(), keyPair1.getPrivate().getEncoded()));
+        assertFalse(Arrays.equals(keyPair0.getPublic().getEncoded(), keyPair1.getPublic().getEncoded()));
+    }
+
+    @Test
+    public void testSignature() {
+        byte[] data = "data".getBytes();
+
+        ECEncryption ec0 = new ECEncryption();
+        byte[] signature0 = ec0.sign(data);
+        assertTrue(ec0.verifySignature(signature0, data));
+
+        KeyPair keyPair = ECEncryption.generateNewKeys();
+        ECEncryption ec1 = new ECEncryption(keyPair);
+        byte[] signature1 = ec1.sign(data);
+        assertTrue(ec1.verifySignature(signature1, data));
+
+
+        PrivateKey privateKey = keyPair.getPrivate();
+        PublicKey publicKey = keyPair.getPublic();
+
+        ECEncryption ec2 = new ECEncryption(privateKey, publicKey);
+        byte[] signature2 = ec2.sign(data);
+        assertTrue(ec2.verifySignature(signature2, data));
+
+
+        String hexPrivateKey1 = ec1.encodePrivateKey();
+        String hexPublicKey2 = ec1.encodePublicKey();
+
+        ECEncryption ec3 = new ECEncryption(hexPrivateKey1, hexPublicKey2);
+        byte[] signature3 = ec3.sign(data);
+        assertTrue(ec3.verifySignature(signature3, data));
+    }
+
+    @Test
+    public void testConvertToAES() {
+        for(int i = 0; i < 1000; i++) {
+            ECEncryption ec = new ECEncryption();
+            SecretKey skey = ec.convertToAESKey();
+            assertEquals(32, skey.getEncoded().length);
+        }
+    }
+
+    @Test
+    public void testKeyGetters() {
+        KeyPair keyPair = ECEncryption.generateNewKeys();
+        ECEncryption ec = new ECEncryption(keyPair);
+
+        assertSame(keyPair.getPrivate(), ec.getPrivateKey());
+        assertSame(keyPair.getPublic(), ec.getPublicKey());
+    }
+}

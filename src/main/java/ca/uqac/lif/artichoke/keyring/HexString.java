@@ -4,7 +4,7 @@ import org.bouncycastle.util.encoders.Hex;
 
 public class HexString {
 
-    public static String encode (byte[] data) {
+    public static String encode(byte[] data) {
         return new String(Hex.encode(data));
     }
 

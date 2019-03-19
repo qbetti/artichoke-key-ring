@@ -239,4 +239,8 @@ public class AESEncryption {
     public String encodeSecretKey() {
         return HexString.encode(secretKey.getEncoded());
     }
+
+    public SecretKey getSecretKey() {
+        return secretKey;
+    }
 }

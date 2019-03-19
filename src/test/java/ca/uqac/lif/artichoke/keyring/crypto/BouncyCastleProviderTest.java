@@ -21,7 +21,6 @@ public class BouncyCastleProviderTest {
     public void testProvider() {
         Provider provider = Security.getProvider("BC");
         assertNotNull(provider);
-
         assertTrue(provider instanceof BouncyCastleProvider);
     }
 

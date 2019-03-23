@@ -8,6 +8,7 @@ import org.bouncycastle.jce.spec.ECParameterSpec;
 import org.bouncycastle.jce.spec.ECPrivateKeySpec;
 import org.bouncycastle.jce.spec.ECPublicKeySpec;
 import org.bouncycastle.math.ec.ECPoint;
+import org.bouncycastle.util.encoders.Hex;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -75,6 +76,10 @@ public class ECEncryption {
         this(decodePrivateKey(hexPrivateKey), decodePublicKey(hexPublicKey));
     }
 
+    public ECEncryption(byte[] privateKey, String hexPublicKey) {
+        this(convertToPrivateKey(privateKey), decodePublicKey(hexPublicKey));
+    }
+
     /**
      * Constructor by specifying the key pair
      * @param keyPair the key pair (should hold EC keys)
@@ -106,6 +111,16 @@ public class ECEncryption {
             System.exit(-1);
             return null;
         }
+    }
+
+
+    /**
+     * Signs data using {@value SIGNATURE_ALGO}
+     * @param hexData the hexadecimal-encoded data to use for signature
+     * @return the signature, or null if something goes wrong
+     */
+    public ECSignature sign(String hexData) {
+        return sign(HexString.decode(hexData));
     }
 
     /**
@@ -141,6 +156,16 @@ public class ECEncryption {
     /**
      * Verifies a signature with the signed data
      * @param hexSignature the hexadecimal-encoded signature
+     * @param hexData the hexadecimal-expected signed data
+     * @return true if the signature is correct, false otherwise
+     */
+    public boolean verifySignature(String hexSignature, String hexData) {
+        return verifySignature(hexSignature, HexString.decode(hexData));
+    }
+
+    /**
+     * Verifies a signature with the signed data
+     * @param hexSignature the hexadecimal-encoded signature
      * @param data the expected signed data
      * @return true if the signature is correct, false otherwise
      */
@@ -157,6 +182,10 @@ public class ECEncryption {
      */
     public boolean verifySignature(ECSignature signature, byte[] data) {
         return verifySignature(signature.getBytes(), data);
+    }
+
+    public boolean verifySignature(ECSignature signature, String hexData) {
+        return verifySignature(signature.getBytes(), HexString.decode(hexData));
     }
 
     /**
@@ -235,9 +264,21 @@ public class ECEncryption {
      * @return the decoded private key
      */
     private static ECPrivateKey decodePrivateKey(String hexPrivateKey) {
+        return convertToPrivateKey(HexString.decode(hexPrivateKey));
+    }
+
+    /**
+     * Converts a private key bytes to a proper {@link ECPrivateKey} object.
+     * @param privateKeyBytes the bytes of the private key
+     * @return the converted private key
+     */
+    private static ECPrivateKey convertToPrivateKey(byte[] privateKeyBytes) {
+        if(privateKeyBytes == null || privateKeyBytes.length == 0)
+            return null;
+
         ECParameterSpec params = ECNamedCurveTable.getParameterSpec(DEFAULT_CURVE_NAME);
 
-        BigInteger d = new BigInteger(formatPrivateKey(HexString.decode(hexPrivateKey)));
+        BigInteger d = new BigInteger(formatPrivateKey(privateKeyBytes));
         ECPrivateKeySpec privateKeySpec = new ECPrivateKeySpec(d, params);
 
         try {

@@ -40,7 +40,7 @@ public class KeyRingJsonTest {
         KeyRingJson keyRingJson = new KeyRingJson();
         keyRingJson.setPublicKey(ec.encodePublicKey());
 
-        PrivateKeyJson privateKeyJson = new PrivateKeyJson();
+        EncryptedField privateKeyJson = new EncryptedField();
         privateKeyJson.setCipher(privateKeyCipher.encodeDataBytes());
         privateKeyJson.setIv(privateKeyCipher.encodeIv());
         keyRingJson.setPrivateKey(privateKeyJson);
@@ -49,7 +49,7 @@ public class KeyRingJsonTest {
 
         GroupJson group0Json = new GroupJson();
         group0Json.setId("group0");
-        PrivateKeyJson group0SecretKey = new PrivateKeyJson();
+        EncryptedField group0SecretKey = new EncryptedField();
         group0SecretKey.setCipher(group0AesKeyCipher.encodeDataBytes());
         group0SecretKey.setIv(group0AesKeyCipher.encodeIv());
         group0Json.setSecretKey(group0SecretKey);
@@ -58,7 +58,7 @@ public class KeyRingJsonTest {
 
         GroupJson group1Json = new GroupJson();
         group1Json.setId("group1");
-        PrivateKeyJson group1SecretKey = new PrivateKeyJson();
+        EncryptedField group1SecretKey = new EncryptedField();
         group1SecretKey.setCipher(group1AesKeyCipher.encodeDataBytes());
         group1SecretKey.setIv(group1AesKeyCipher.encodeIv());
         group1Json.setSecretKey(group1SecretKey);

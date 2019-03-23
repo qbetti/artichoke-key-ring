@@ -1,6 +1,6 @@
 package ca.uqac.lif.artichoke.keyring.json;
 
-public class PrivateKeyJson {
+public class EncryptedField {
 
     private String cipher;
     private String iv;

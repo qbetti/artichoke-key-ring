@@ -3,10 +3,10 @@ package ca.uqac.lif.artichoke.keyring.json;
 public class GroupJson {
 
     private String id;
-    private PrivateKeyJson secretKey;
+    private EncryptedField secretKey;
 
     public GroupJson() {
-        secretKey = new PrivateKeyJson();
+        secretKey = new EncryptedField();
     }
 
     public String getId() {
@@ -17,11 +17,11 @@ public class GroupJson {
         this.id = id;
     }
 
-    public PrivateKeyJson getSecretKey() {
+    public EncryptedField getSecretKey() {
         return secretKey;
     }
 
-    public void setSecretKey(PrivateKeyJson secretKey) {
+    public void setSecretKey(EncryptedField secretKey) {
         this.secretKey = secretKey;
     }
 }

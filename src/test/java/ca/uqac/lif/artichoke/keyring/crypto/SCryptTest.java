@@ -4,7 +4,6 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import javax.crypto.Cipher;
 import java.security.Security;
 import java.util.Arrays;
 

@@ -6,12 +6,12 @@ import java.util.List;
 public class KeyRingJson {
 
     private String publicKey;
-    private PrivateKeyJson privateKey;
+    private EncryptedField privateKey;
     private String salt;
     private List<GroupJson> groups;
 
     public KeyRingJson() {
-        privateKey = new PrivateKeyJson();
+        privateKey = new EncryptedField();
         groups = new ArrayList<>();
     }
 
@@ -23,11 +23,11 @@ public class KeyRingJson {
         this.publicKey = publicKey;
     }
 
-    public PrivateKeyJson getPrivateKey() {
+    public EncryptedField getPrivateKey() {
         return privateKey;
     }
 
-    public void setPrivateKey(PrivateKeyJson privateKey) {
+    public void setPrivateKey(EncryptedField privateKey) {
         this.privateKey = privateKey;
     }
 

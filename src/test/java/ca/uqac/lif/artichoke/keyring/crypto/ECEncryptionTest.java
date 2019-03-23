@@ -55,6 +55,8 @@ public class ECEncryptionTest {
         ECEncryption ec3 = new ECEncryption(hexPrivateKey1, hexPublicKey2);
         ECSignature signature3 = ec3.sign(data);
         assertTrue(ec3.verifySignature(signature3, data));
+
+        assertFalse(ec0.verifySignature(signature1, data));
     }
 
     @Test

@@ -48,15 +48,6 @@ public class KeyRing {
         this(o, passphrase, true);
     }
 
-//    /**
-//     * Package-private
-//     * @param o
-//     * @param keepDerivedKeyInMemory
-//     */
-//    KeyRing(KeyRing o, boolean keepDerivedKeyInMemory) {
-//        this(o, null, keepDerivedKeyInMemory);
-//    }
-
     private KeyRing(KeyRing o, String passphrase, boolean stayUnlocked) {
         hexPublicKey = o.hexPublicKey;
         hexEncryptedPrivateKey = o.hexEncryptedPrivateKey;
@@ -126,30 +117,30 @@ public class KeyRing {
     }
 
 
-    public boolean addGroup(String passphrase, String groupId, String hexGroupSecretKey) {
-        return addGroup(passphrase, groupId, HexString.decode(hexGroupSecretKey));
-    }
+    public boolean addGroup(String passphrase, String groupId, byte[] groupSecretKey)
+            throws BadPassphraseException, GroupIdAlreadyExistsException, EmptyGroupIdException, PrivateKeyDecryptionException {
 
-
-    public boolean addGroup(String passphrase, String groupId, byte[] groupSecretKey) {
         SCrypt sCrypt = new SCrypt(hexSCryptSalt);
         return addGroup(sCrypt.deriveKey(passphrase), groupId, groupSecretKey);
     }
 
 
-    public boolean addGroup(String groupId, byte[] groupSecretKey) {
+    public boolean addGroup(String groupId, byte[] groupSecretKey)
+            throws BadPassphraseException, GroupIdAlreadyExistsException, EmptyGroupIdException, PrivateKeyDecryptionException {
         return addGroup(this.derivedKey, groupId, groupSecretKey);
     }
 
 
-    public boolean addGroup(byte[] derivedKey, String groupId, byte[] groupSecretKey) {
-        if(groupsById.containsKey(groupId) || derivedKey == null)
-            return false;
+    public boolean addGroup(byte[] derivedKey, String groupId, byte[] groupSecretKey)
+            throws PrivateKeyDecryptionException, BadPassphraseException, GroupIdAlreadyExistsException, EmptyGroupIdException {
+
+        if(groupId == null || groupId.isEmpty())
+            throw new EmptyGroupIdException();
+
+        if(groupsById.containsKey(groupId))
+            throw new GroupIdAlreadyExistsException(groupId);
 
         AESEncryption aes = initAESEncryption(derivedKey);
-        if(aes == null)
-            return false;
-
         AESCipher groupKeyCipher = aes.encrypt(groupSecretKey);
         if(groupKeyCipher == null)
             return false;
@@ -159,26 +150,29 @@ public class KeyRing {
     }
 
 
-    public byte[] retrieveGroupKey(String passphrase, String groupId) {
+    public byte[] retrieveGroupKey(String passphrase, String groupId)
+            throws PrivateKeyDecryptionException, BadPassphraseException, NonExistingGroupIdException {
+
         SCrypt sCrypt = new SCrypt(hexSCryptSalt);
         return retrieveGroupKey(sCrypt.deriveKey(passphrase), groupId);
     }
 
 
-    public byte[] retrieveGroupKey(String groupId) {
+    public byte[] retrieveGroupKey(String groupId)
+            throws PrivateKeyDecryptionException, NonExistingGroupIdException, BadPassphraseException {
+
         return retrieveGroupKey(this.derivedKey, groupId);
     }
 
 
-    public byte[] retrieveGroupKey(byte[] derivedKey, String groupId) {
+    public byte[] retrieveGroupKey(byte[] derivedKey, String groupId)
+            throws PrivateKeyDecryptionException, BadPassphraseException, NonExistingGroupIdException {
+
         Group group = groupsById.get(groupId);
         if(group == null)
-            return null;
+            throw new NonExistingGroupIdException(groupId);
 
         AESEncryption aes = initAESEncryption(derivedKey);
-        if(aes == null)
-            return null;
-
         AESCipher cipher = aes.decrypt(group.getHexEncryptedSecretKey(), group.getHexIvSecretKey());
         if(cipher == null)
             return null;
@@ -187,26 +181,28 @@ public class KeyRing {
     }
 
 
-    private AESEncryption initAESEncryption(byte[] derivedKey) {
-        byte[] ecPrivateKey = decryptECPrivateKey(derivedKey);
-        if(ecPrivateKey == null)
-            return null;
+    private AESEncryption initAESEncryption(byte[] derivedKey)
+            throws PrivateKeyDecryptionException, BadPassphraseException {
 
+        byte[] ecPrivateKey = decryptECPrivateKey(derivedKey);
         SecretKey secretKey = AESEncryption.convertToAESKey(ecPrivateKey);
         return new AESEncryption(secretKey);
     }
 
 
-    private byte[] decryptECPrivateKey(byte[] derivedKey) {
-        if(derivedKey == null)
-            return null;
+    private byte[] decryptECPrivateKey(byte[] derivedKey)
+            throws BadPassphraseException, PrivateKeyDecryptionException {
 
         AESCipher ecPrivateKeyCipher = new AESEncryption(derivedKey).decrypt(hexEncryptedPrivateKey, hexIvPrivateKey);
         if(ecPrivateKeyCipher == null)
-            return null;
+            throw new PrivateKeyDecryptionException();
 
         byte[] privateKey = ecPrivateKeyCipher.getDataBytes();
-        return verifyPrivateKey(privateKey) ? privateKey : null;
+
+        if(verifyPrivateKey(privateKey))
+            return privateKey;
+        else
+            throw new BadPassphraseException();
     }
 
 

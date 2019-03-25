@@ -28,7 +28,12 @@ public class CmdAppTest {
 
     @Test
     public void testGenerateNew() {
-        CmdApp.main(new String[]{"--generate-new"});
+        CmdApp.main(new String[]{"--generate-new", "-f=keyring.json"});
+    }
+
+    @Test
+    public void testAddGroup() {
+        CmdApp.main(new String[]{"--add"});
     }
 
 }

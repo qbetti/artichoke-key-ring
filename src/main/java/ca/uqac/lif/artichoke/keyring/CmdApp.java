@@ -1,12 +1,15 @@
 package ca.uqac.lif.artichoke.keyring;
 
+import ca.uqac.lif.artichoke.keyring.crypto.AESEncryption;
 import org.apache.commons.cli.*;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.util.encoders.Hex;
 
 import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.security.Security;
+import java.util.Scanner;
 
 public class CmdApp {
 
@@ -22,13 +25,17 @@ public class CmdApp {
     private Option optAddGroup;
     private Option optRetrieveGroup;
     private Option optStayUnlocked;
-    private Option optGroupdId;
+    private Option optGroupId;
     private Option optGroupKey;
     private Option optHelp;
+
+    private String keyringFilePath;
+
 
     public CmdApp() {
         buildOptions();
     }
+
 
     private void buildOptions() {
         optGenerateNewKeyRing = Option.builder("new")
@@ -62,9 +69,9 @@ public class CmdApp {
                         "False by default, will ask the passphrase for each action")
                 .build();
 
-        optGroupdId = Option.builder("gid")
+        optGroupId = Option.builder("gid")
                 .longOpt("group-id")
-                .hasArg()
+                .hasArg(true)
                 .desc("Specifies the id of the group to be added/retrieved")
                 .build();
 
@@ -86,59 +93,119 @@ public class CmdApp {
                 .addOption(optAddGroup)
                 .addOption(optRetrieveGroup)
                 .addOption(optStayUnlocked)
-                .addOption(optGroupdId)
+                .addOption(optGroupId)
                 .addOption(optGroupKey)
                 .addOption(optHelp)
                 .addOption(optHelp);
     }
 
+
     private void run(String[] args) throws ParseException {
-        cmd = CMD_PARSER.parse(options, args);
-
-        if(cmd.hasOption(optHelp.getOpt())) {
-            HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp("java -jar key-ring.jar", options);
-            return;
-        }
-
-        if(cmd.hasOption(optGenerateNewKeyRing.getOpt())) {
-            generateNewKeyRingFile();
-        }
-    }
-
-    private boolean generateNewKeyRingFile() {
-        String filePath;
-        if(cmd.hasOption(optKeyRingFilePath.getOpt()))
-            filePath = cmd.getOptionValue(optKeyRingFilePath.getOpt());
-        else
-            filePath = DEFAULT_FILE_PATH;
-
-        File keyRingFile = new File(filePath);
         try {
-            if(keyRingFile.createNewFile()) {
-                String passphrase = null;
-                while(passphrase == null) {
-                    passphrase = askNewPassphrase();
-                }
+            cmd = CMD_PARSER.parse(options, args);
 
-                KeyRing keyRing = KeyRing.generateNew(passphrase, false);
-                keyRing.saveToFile(keyRingFile);
-                return true;
+            if(cmd.hasOption(optHelp.getOpt())) {
+                printHelp();
+                return;
+            }
+
+            if(cmd.hasOption(optKeyRingFilePath.getOpt())) {
+                keyringFilePath = cmd.getOptionValue(optKeyRingFilePath.getOpt());
 
             } else {
-                System.out.println("File '"+ filePath + "' already exists.");
-                return false;
+                keyringFilePath = DEFAULT_FILE_PATH;
+            }
+
+            if(cmd.hasOption(optGenerateNewKeyRing.getOpt())) {
+                generateNewKeyRingFile();
+            } else {
+                String passphrase = askPassphrase();
+                String groupId = cmd.getOptionValue(optGroupId.getOpt());
+
+
+                    if (cmd.hasOption(optAddGroup.getOpt())) {
+                        addGroup(passphrase, groupId);
+
+                    } else if (cmd.hasOption(optRetrieveGroup.getOpt())) {
+                        retrieveGroup(passphrase, groupId);
+
+                    } else {
+
+                    }
+
             }
         } catch (IOException e) {
-            System.out.println("Could not create/write file '"+ filePath + "', check path or permissions");
-            return false;
+            System.out.println("Could not create/write or open/read'" + keyringFilePath + "' file.\nCheck path and/or permissions.");
+            System.exit(-1);
+        } catch (EmptyGroupIdException | NonExistingGroupIdException | BadPassphraseException | GroupIdAlreadyExistsException | PrivateKeyDecryptionException e) {
+            System.out.println(e.getMessage());
+            System.exit(-1);
         }
     }
 
+    private void printHelp() {
+        HelpFormatter formatter = new HelpFormatter();
+        formatter.printHelp("java -jar key-ring.jar", options);
+    }
+
+
+    private boolean generateNewKeyRingFile()
+            throws IOException {
+
+        File keyRingFile = new File(keyringFilePath);
+        keyRingFile.createNewFile();
+
+        String passphrase = null;
+        while(passphrase == null) {
+            passphrase = askNewPassphrase();
+        }
+
+        KeyRing keyRing = KeyRing.generateNew(passphrase, false);
+        keyRing.saveToFile(keyRingFile);
+        return true;
+    }
+
+
+    private boolean addGroup(String passphrase, String groupId)
+            throws IOException, PrivateKeyDecryptionException, GroupIdAlreadyExistsException, EmptyGroupIdException, BadPassphraseException {
+
+        KeyRing keyRing = KeyRing.loadFromFile(new File(keyringFilePath), passphrase);
+
+        byte[] groupKey;
+        if (cmd.hasOption(optGroupKey.getOpt())) {
+            groupKey = HexString.decode(cmd.getOptionValue(optGroupKey.getOpt()));
+        } else {
+            groupKey = AESEncryption.generateNewKey().getEncoded();
+        }
+
+        keyRing.addGroup(groupId, groupKey);
+        keyRing.saveToFile(new File(keyringFilePath));
+        System.out.println(HexString.encode(groupKey));
+
+        return true;
+    }
+
+
+    private boolean retrieveGroup(String passphrase, String groupId)
+            throws IOException, PrivateKeyDecryptionException, NonExistingGroupIdException, BadPassphraseException {
+
+        KeyRing keyRing = KeyRing.loadFromFile(new File(keyringFilePath), passphrase);
+        byte[] key = keyRing.retrieveGroupKey(groupId);
+        if(key == null) {
+            System.out.println("Could not get secret key for '" + groupId + "' group.");
+            System.exit(-1);
+        }
+        else {
+            System.out.println("Secret key ('" + groupId + "'): " + HexString.encode(key));
+        }
+
+        return true;
+    }
+
+
     private String askNewPassphrase() {
-        Console console = System.console();
-        String passphrase = new String(console.readPassword("Choose a passphrase (IT CANNOT BE RECOVERED): "));
-        String verification = new String(console.readPassword("Confirm your passphrase: "));
+        String passphrase = getInputLine("Choose a passphrase (!! DO NOT FORGET IT, IT CANNOT BE RECOVERED !!): ");
+        String verification = getInputLine("Confirm your passphrase: ");
 
         if (passphrase.isEmpty()) {
             System.out.println("You cannot choose an empty passphrase.");
@@ -152,10 +219,23 @@ public class CmdApp {
         return passphrase;
     }
 
-    private String askPassphrase() {
+
+    private String getInputLine(String msg) {
         Console console = System.console();
-        return new String(console.readPassword("Passphrase: "));
+        if(console == null) {
+            System.out.println(msg);
+            Scanner scanner = new Scanner(System.in);
+            return scanner.nextLine();
+        } else {
+            return new String(console.readPassword(msg));
+        }
     }
+
+
+    private String askPassphrase() {
+        return getInputLine("Passphrase: ");
+    }
+
 
     public static void main(String[] args) {
         Security.addProvider(new BouncyCastleProvider());
@@ -164,8 +244,7 @@ public class CmdApp {
             app.run(args);
         } catch (ParseException e) {
             System.out.println(e.getMessage());
+            System.exit(-1);
         }
     }
-
-
 }

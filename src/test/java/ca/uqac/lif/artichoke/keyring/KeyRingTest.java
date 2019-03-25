@@ -64,7 +64,7 @@ public class KeyRingTest {
     }
 
     @Test
-    public void testTimeNoMemory() {
+    public void testStayLocked() {
         String passphrase = "passphrase";
         KeyRing keyRing = KeyRing.generateNew(passphrase, false);
 
@@ -75,7 +75,7 @@ public class KeyRingTest {
     }
 
     @Test
-    public void testTimeWithMemory() {
+    public void testStayUnlocked() {
         String passphrase = "passphrase";
         KeyRing keyRing = KeyRing.generateNew(passphrase, true);
 

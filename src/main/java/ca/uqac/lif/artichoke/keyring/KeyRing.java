@@ -251,7 +251,6 @@ public class KeyRing {
 
 
     public static KeyRing fromJson(JsonObject jKeyRing, String passphrase) {
-
         KeyRing keyRing = new KeyRing();
         keyRing.hexSCryptSalt = jKeyRing.get(JKEY_SCRYPT_SALT).getAsString();
         keyRing.hexPublicKey = jKeyRing.get(JKEY_PUBLIC_KEY).getAsString();

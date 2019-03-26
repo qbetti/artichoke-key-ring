@@ -1,12 +1,12 @@
 package ca.uqac.lif.artichoke.keyring;
 
-public class Group {
+public class KeyRingGroup {
 
     private String id;
     private String hexEncryptedSecretKey;
     private String hexIvSecretKey;
 
-    public Group(String id, String hexEncryptedSecretKey, String hexIvSecretKey) {
+    public KeyRingGroup(String id, String hexEncryptedSecretKey, String hexIvSecretKey) {
         this.id = id;
         this.hexEncryptedSecretKey = hexEncryptedSecretKey;
         this.hexIvSecretKey = hexIvSecretKey;

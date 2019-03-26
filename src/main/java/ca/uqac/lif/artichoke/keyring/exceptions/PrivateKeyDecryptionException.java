@@ -1,4 +1,4 @@
-package ca.uqac.lif.artichoke.keyring;
+package ca.uqac.lif.artichoke.keyring.exceptions;
 
 public class PrivateKeyDecryptionException extends Exception {
 

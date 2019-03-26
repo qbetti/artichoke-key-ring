@@ -14,8 +14,6 @@ import java.util.Scanner;
 public class CmdApp {
 
     private final static CommandLineParser CMD_PARSER = new DefaultParser();
-    private final static String DEFAULT_FILE_PATH = "./keyring.json";
-
 
     private Options options;
     private CommandLine cmd;
@@ -29,11 +27,10 @@ public class CmdApp {
     private Option optGroupKey;
     private Option optHelp;
 
-    private String keyringFilePath;
 
-
-    public CmdApp() {
+    public CmdApp(String[] args) throws ParseException {
         buildOptions();
+        parse(args);
     }
 
 
@@ -99,149 +96,31 @@ public class CmdApp {
                 .addOption(optHelp);
     }
 
+    public void initApp(App app) {
+        app.setOptions(options);
 
-    private void run(String[] args) throws ParseException {
-        try {
-            cmd = CMD_PARSER.parse(options, args);
+        app.setPrintHelpMode(cmd.hasOption(optHelp.getOpt()));
+        app.setGenerateNewKeyRingMode(cmd.hasOption(optGenerateNewKeyRing.getOpt()));
+        app.setAddGroupMode(cmd.hasOption(optAddGroup.getOpt()));
+        app.setRetrieveGroupMode(cmd.hasOption(optRetrieveGroup.getOpt()));
+        app.setStayUnlocked(cmd.hasOption(optStayUnlocked.getOpt()));
 
-            if(cmd.hasOption(optHelp.getOpt())) {
-                printHelp();
-                return;
-            }
-
-            if(cmd.hasOption(optKeyRingFilePath.getOpt())) {
-                keyringFilePath = cmd.getOptionValue(optKeyRingFilePath.getOpt());
-
-            } else {
-                keyringFilePath = DEFAULT_FILE_PATH;
-            }
-
-            if(cmd.hasOption(optGenerateNewKeyRing.getOpt())) {
-                generateNewKeyRingFile();
-            } else {
-                String passphrase = askPassphrase();
-                String groupId = cmd.getOptionValue(optGroupId.getOpt());
-
-
-                    if (cmd.hasOption(optAddGroup.getOpt())) {
-                        addGroup(passphrase, groupId);
-
-                    } else if (cmd.hasOption(optRetrieveGroup.getOpt())) {
-                        retrieveGroup(passphrase, groupId);
-
-                    } else {
-
-                    }
-
-            }
-        } catch (IOException e) {
-            System.out.println("Could not create/write or open/read'" + keyringFilePath + "' file.\nCheck path and/or permissions.");
-            System.exit(-1);
-        } catch (EmptyGroupIdException | NonExistingGroupIdException | BadPassphraseException | GroupIdAlreadyExistsException | PrivateKeyDecryptionException e) {
-            System.out.println(e.getMessage());
-            System.exit(-1);
-        }
+        app.setKeyringFilePath(cmd.getOptionValue(optKeyRingFilePath.getOpt()));
+        app.setGroupId(cmd.getOptionValue(optGroupId.getOpt()));
+        app.setHexGroupKey(cmd.getOptionValue(optGroupKey.getOpt()));
     }
 
-    private void printHelp() {
-        HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp("java -jar key-ring.jar", options);
+    private void parse(String[] args) throws ParseException {
+        cmd = CMD_PARSER.parse(options, args);
     }
-
-
-    private boolean generateNewKeyRingFile()
-            throws IOException {
-
-        File keyRingFile = new File(keyringFilePath);
-        keyRingFile.createNewFile();
-
-        String passphrase = null;
-        while(passphrase == null) {
-            passphrase = askNewPassphrase();
-        }
-
-        KeyRing keyRing = KeyRing.generateNew(passphrase, false);
-        keyRing.saveToFile(keyRingFile);
-        return true;
-    }
-
-
-    private boolean addGroup(String passphrase, String groupId)
-            throws IOException, PrivateKeyDecryptionException, GroupIdAlreadyExistsException, EmptyGroupIdException, BadPassphraseException {
-
-        KeyRing keyRing = KeyRing.loadFromFile(new File(keyringFilePath), passphrase);
-
-        byte[] groupKey;
-        if (cmd.hasOption(optGroupKey.getOpt())) {
-            groupKey = HexString.decode(cmd.getOptionValue(optGroupKey.getOpt()));
-        } else {
-            groupKey = AESEncryption.generateNewKey().getEncoded();
-        }
-
-        keyRing.addGroup(groupId, groupKey);
-        keyRing.saveToFile(new File(keyringFilePath));
-        System.out.println(HexString.encode(groupKey));
-
-        return true;
-    }
-
-
-    private boolean retrieveGroup(String passphrase, String groupId)
-            throws IOException, PrivateKeyDecryptionException, NonExistingGroupIdException, BadPassphraseException {
-
-        KeyRing keyRing = KeyRing.loadFromFile(new File(keyringFilePath), passphrase);
-        byte[] key = keyRing.retrieveGroupKey(groupId);
-        if(key == null) {
-            System.out.println("Could not get secret key for '" + groupId + "' group.");
-            System.exit(-1);
-        }
-        else {
-            System.out.println("Secret key ('" + groupId + "'): " + HexString.encode(key));
-        }
-
-        return true;
-    }
-
-
-    private String askNewPassphrase() {
-        String passphrase = getInputLine("Choose a passphrase (!! DO NOT FORGET IT, IT CANNOT BE RECOVERED !!): ");
-        String verification = getInputLine("Confirm your passphrase: ");
-
-        if (passphrase.isEmpty()) {
-            System.out.println("You cannot choose an empty passphrase.");
-            return null;
-        }
-
-        if(!passphrase.equals(verification)) {
-            System.out.println("Passphrase and verification do not match.");
-            return null;
-        }
-        return passphrase;
-    }
-
-
-    private String getInputLine(String msg) {
-        Console console = System.console();
-        if(console == null) {
-            System.out.println(msg);
-            Scanner scanner = new Scanner(System.in);
-            return scanner.nextLine();
-        } else {
-            return new String(console.readPassword(msg));
-        }
-    }
-
-
-    private String askPassphrase() {
-        return getInputLine("Passphrase: ");
-    }
-
 
     public static void main(String[] args) {
         Security.addProvider(new BouncyCastleProvider());
-        CmdApp app = new CmdApp();
         try {
-            app.run(args);
+            CmdApp cmdApp = new CmdApp(args);
+            App app = new App();
+            cmdApp.initApp(app);
+            app.run();
         } catch (ParseException e) {
             System.out.println(e.getMessage());
             System.exit(-1);

@@ -339,6 +339,8 @@ public class KeyRing {
      */
     private AESEncryption initAESEncryption(byte[] derivedKey)
             throws PrivateKeyDecryptionException, BadPassphraseException {
+        if(derivedKey == null)
+            throw new BadPassphraseException();
 
         byte[] ecPrivateKey = decryptECPrivateKey(derivedKey);
         SecretKey secretKey = AESEncryption.convertToAESKey(ecPrivateKey);

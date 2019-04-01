@@ -157,11 +157,16 @@ public class KeyRing {
     /**
      * Loads a keyring from a specified JSON file
      * @param file the file containing the JSON serialization of the keyring
-     * @return the loaded keyring
+     * @return the loaded keyring, or null if a problem occurred
      * @throws IOException if the file is not found nor accessible
      */
     public static KeyRing loadFromFile(File file) throws IOException {
-        return loadFromFile(file, null);
+        try {
+            return loadFromFile(file, null);
+        } catch (PrivateKeyDecryptionException | BadPassphraseException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     /**
@@ -171,8 +176,10 @@ public class KeyRing {
      * @param passphrase the passphrase of the corresponding keyring
      * @return the loaded keyring
      * @throws IOException if the file is not found/readable
+     * @throws BadPassphraseException if the passphrase used is incorrect
+     * @throws PrivateKeyDecryptionException if a problem occurred during the private key decryption
      */
-    public static KeyRing loadFromFile(File file, String passphrase) throws IOException {
+    public static KeyRing loadFromFile(File file, String passphrase) throws IOException, PrivateKeyDecryptionException, BadPassphraseException {
         BufferedReader br = new BufferedReader(new FileReader(file));
         String sJKeyRing = br.readLine();
         br.close();
@@ -443,7 +450,12 @@ public class KeyRing {
      * @return the keyring built from the JSON string
      */
     public static KeyRing fromJson(JsonObject jKeyRing) {
-        return fromJson(jKeyRing, null);
+        try {
+            return fromJson(jKeyRing, null);
+        } catch (PrivateKeyDecryptionException | BadPassphraseException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     /**
@@ -453,7 +465,7 @@ public class KeyRing {
      * @param passphrase the passphrase to unlock the keyring
      * @return the keyring built from the JSON string
      */
-    public static KeyRing fromJson(JsonObject jKeyRing, String passphrase) {
+    public static KeyRing fromJson(JsonObject jKeyRing, String passphrase) throws PrivateKeyDecryptionException, BadPassphraseException {
         KeyRing keyRing = new KeyRing();
         keyRing.hexSCryptSalt = jKeyRing.get(JKEY_SCRYPT_SALT).getAsString();
         keyRing.hexPublicKey = jKeyRing.get(JKEY_PUBLIC_KEY).getAsString();
@@ -477,6 +489,10 @@ public class KeyRing {
         if(passphrase != null) {
             SCrypt sCrypt = new SCrypt(keyRing.hexSCryptSalt);
             keyRing.derivedKey = sCrypt.deriveKey(passphrase);
+
+            if(!keyRing.verifyPassphrase()) {
+                throw new BadPassphraseException();
+            }
         }
         return keyRing;
     }

@@ -9,6 +9,7 @@ import com.google.gson.JsonParser;
 
 import javax.crypto.SecretKey;
 import java.io.*;
+import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -199,6 +200,39 @@ public class KeyRing {
         BufferedWriter bw = new BufferedWriter(new FileWriter(file));
         bw.write(this.toJson().toString());
         bw.close();
+    }
+
+
+    public byte[] sign(byte[] data, String passphrase) throws PrivateKeyDecryptionException, BadPassphraseException {
+        byte[] privateKey = decryptECPrivateKey(retrieveDerivedKey(passphrase));
+        ECEncryption ec = new ECEncryption(privateKey, hexPublicKey);
+        ECSignature signature = ec.sign(data);
+        return signature.getBytes();
+    }
+
+
+    public static boolean verifySignature(byte[] signature, byte[] data, String hexPublicKey) {
+        return verifySignature(signature, data, hexPublicKey);
+    }
+
+
+    public boolean verifySignature(byte[] signature, byte[] data) {
+        if(this.hexPublicKey == null)
+            return false;
+
+        return verifySignature(signature, data, this.hexPublicKey);
+    }
+
+
+
+
+    public byte[] retrieveDerivedKey(String passphrase) {
+        if(passphrase == null) {
+            return this.derivedKey;
+        } else {
+            SCrypt sCrypt = new SCrypt(hexSCryptSalt);
+            return sCrypt.deriveKey(passphrase);
+        }
     }
 
     /**

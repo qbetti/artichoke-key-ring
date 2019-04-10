@@ -195,6 +195,16 @@ public class ECEncryption {
      * @return true if the signature is correct, false otherwise
      */
     public boolean verifySignature(byte[] signature, byte[] data) {
+        return verifySignature(signature, data, this.publicKey);
+    }
+
+
+    public static boolean verifySignature(byte[] signature, byte[] data, String hexPublicKey) {
+        return verifySignature(signature, data, decodePublicKey(hexPublicKey));
+    }
+
+
+    public static boolean verifySignature(byte[] signature, byte[] data, PublicKey publicKey) {
         Signature ecdsa = null;
         try {
             ecdsa = Signature.getInstance(SIGNATURE_ALGO);
@@ -202,7 +212,7 @@ public class ECEncryption {
             e.printStackTrace();
         }
         try {
-            ecdsa.initVerify(this.publicKey);
+            ecdsa.initVerify(publicKey);
         } catch (InvalidKeyException e) {
             e.printStackTrace();
         }
@@ -217,6 +227,7 @@ public class ECEncryption {
             e.printStackTrace();
             return false;
         }
+
     }
 
     /**

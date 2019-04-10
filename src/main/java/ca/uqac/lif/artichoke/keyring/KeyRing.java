@@ -540,4 +540,8 @@ public class KeyRing {
     public List<String> getGroupIds() {
         return new ArrayList<>(groupsById.keySet());
     }
+
+    public String getHexPublicKey() {
+        return hexPublicKey;
+    }
 }

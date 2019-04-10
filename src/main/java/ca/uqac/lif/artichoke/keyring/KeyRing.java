@@ -212,7 +212,7 @@ public class KeyRing {
 
 
     public static boolean verifySignature(byte[] signature, byte[] data, String hexPublicKey) {
-        return verifySignature(signature, data, hexPublicKey);
+        return ECEncryption.verifySignature(signature, data, hexPublicKey);
     }
 
 
